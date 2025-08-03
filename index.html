@@ -1,265 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Housing Society Manager</title>
+  <title>Housing Society Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f2f2f2;
-    }
-
-    h1 {
-      text-align: center;
-    }
-
-    .tabs {
-      display: flex;
-      margin-bottom: 20px;
-    }
-
-    .tab-button {
-      flex: 1;
-      padding: 10px;
-      cursor: pointer;
-      background: #ddd;
-      border: 1px solid #bbb;
-      text-align: center;
-    }
-
-    .tab-button.active {
-      background: #fff;
-      font-weight: bold;
-      border-bottom: none;
-    }
-
-    .tab-content {
-      background: #fff;
-      padding: 20px;
-      border: 1px solid #bbb;
-    }
-
-    form {
-      margin-bottom: 20px;
-    }
-
-    input, select, button {
-      padding: 8px;
-      margin-bottom: 10px;
-      width: 100%;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-
-    th, td {
-      padding: 10px;
-      border: 1px solid #ccc;
-    }
-
-    .summary {
-      margin-top: 20px;
-      font-weight: bold;
-    }
-
-    .delete-btn {
-      background-color: red;
-      color: white;
-      border: none;
-      padding: 5px 10px;
-    }
-
-    .report-button {
-      margin-top: 10px;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; max-width: 800px; }
+    h2 { margin-top: 30px; }
+    input, select, button { margin: 5px 0; padding: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    canvas { max-width: 100%; }
   </style>
 </head>
 <body>
 
-<h1>Housing Society Manager</h1>
+<h1>🏡 Society Maintenance & Expense Tracker</h1>
 
-<div class="tabs">
-  <div class="tab-button active" onclick="showTab('income')">Maintenance Collection</div>
-  <div class="tab-button" onclick="showTab('expense')">Expense Tracker</div>
-</div>
+<!-- Maintenance Income Entry -->
+<h2>Maintenance Collection</h2>
+<input type="date" id="income-date" />
+<input type="text" id="income-name" placeholder="Flat / Member Name" />
+<input type="number" id="income-amount" placeholder="Amount ₹" />
+<button onclick="addIncome()">Add Income</button>
 
-<div id="income" class="tab-content">
-  <h2>Collect Maintenance</h2>
-  <form id="income-form">
-    <input type="date" id="income-date" required />
-    <input type="text" id="resident-name" placeholder="Resident Name" required />
-    <input type="number" id="income-amount" placeholder="Amount (₹)" required min="0" />
-    <button type="submit">Add Collection</button>
-  </form>
+<!-- Expense Entry -->
+<h2>Record Expense</h2>
+<input type="date" id="expense-date" />
+<input type="text" id="expense-category" placeholder="Category (e.g., Security)" />
+<input type="number" id="expense-amount" placeholder="Amount ₹" />
+<input type="text" id="expense-desc" placeholder="Description" />
+<button onclick="addExpense()">Add Expense</button>
 
-  <table id="income-table">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Resident</th>
-        <th>Amount (₹)</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<!-- Filter -->
+<h2>📅 Filter by Month</h2>
+<input type="month" id="filter-month" />
+<button onclick="renderData()">Apply Filter</button>
 
-  <div class="summary" id="total-income">Total Collected: ₹0</div>
-</div>
+<!-- Tables -->
+<h2>Maintenance Income</h2>
+<table>
+  <thead><tr><th>Date</th><th>Name</th><th>Amount</th></tr></thead>
+  <tbody id="income-body"></tbody>
+</table>
 
-<div id="expense" class="tab-content" style="display: none;">
-  <h2>Add Expense</h2>
-  <form id="expense-form">
-    <input type="date" id="expense-date" required />
-    <input type="text" id="expense-category" placeholder="Category" required />
-    <input type="number" id="expense-amount" placeholder="Amount (₹)" required min="0" />
-    <input type="text" id="expense-desc" placeholder="Description" />
-    <button type="submit">Add Expense</button>
-  </form>
+<h2>Expenses</h2>
+<table>
+  <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th></tr></thead>
+  <tbody id="expense-body"></tbody>
+</table>
 
-  <table id="expense-table">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Category</th>
-        <th>Amount (₹)</th>
-        <th>Description</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<h2>Summary</h2>
+<p>Total Income: ₹<span id="total-income">0</span></p>
+<p>Total Expenses: ₹<span id="total-expense">0</span></p>
+<p><strong>Balance: ₹<span id="balance">0</span></strong></p>
 
-  <div class="summary" id="total-expense">Total Expenses: ₹0</div>
-  <div class="summary" id="balance">Balance: ₹0</div>
-  <button class="report-button" onclick="downloadReport()">Download CSV Report</button>
-</div>
+<!-- Category Chart -->
+<h2>Expense Breakdown by Category</h2>
+<canvas id="categoryChart" style="max-width: 400px; margin: 20px auto;"></canvas>
+
+<!-- Reports -->
+<h2>📤 Export Report</h2>
+<button onclick="exportCSV()">Download CSV</button>
+<button onclick="exportPDF()">Download PDF</button>
 
 <script>
-  let incomeData = JSON.parse(localStorage.getItem("incomeData")) || [];
-  let expenseData = JSON.parse(localStorage.getItem("expenseData")) || [];
+  const incomeData = [];
+  const expenseData = [];
 
-  const incomeTable = document.querySelector("#income-table tbody");
-  const expenseTable = document.querySelector("#expense-table tbody");
-
-  function showTab(tabId) {
-    document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
-    document.querySelectorAll(".tab-content").forEach(div => div.style.display = "none");
-
-    document.querySelector(`.tab-button[onclick="showTab('${tabId}')"]`).classList.add("active");
-    document.getElementById(tabId).style.display = "block";
-  }
-
-  function renderIncome() {
-    incomeTable.innerHTML = "";
-    let total = 0;
-    incomeData.forEach((entry, i) => {
-      total += Number(entry.amount);
-      incomeTable.innerHTML += `
-        <tr>
-          <td>${entry.date}</td>
-          <td>${entry.name}</td>
-          <td>₹${entry.amount}</td>
-          <td><button class="delete-btn" onclick="deleteIncome(${i})">Delete</button></td>
-        </tr>
-      `;
+  function addIncome() {
+    incomeData.push({
+      date: document.getElementById("income-date").value,
+      name: document.getElementById("income-name").value,
+      amount: parseFloat(document.getElementById("income-amount").value)
     });
-    document.getElementById("total-income").textContent = `Total Collected: ₹${total}`;
-    updateBalance();
+    renderData();
   }
 
-  function renderExpenses() {
-    expenseTable.innerHTML = "";
-    let total = 0;
-    expenseData.forEach((entry, i) => {
-      total += Number(entry.amount);
-      expenseTable.innerHTML += `
-        <tr>
-          <td>${entry.date}</td>
-          <td>${entry.category}</td>
-          <td>₹${entry.amount}</td>
-          <td>${entry.description}</td>
-          <td><button class="delete-btn" onclick="deleteExpense(${i})">Delete</button></td>
-        </tr>
-      `;
+  function addExpense() {
+    expenseData.push({
+      date: document.getElementById("expense-date").value,
+      category: document.getElementById("expense-category").value,
+      amount: parseFloat(document.getElementById("expense-amount").value),
+      desc: document.getElementById("expense-desc").value
     });
-    document.getElementById("total-expense").textContent = `Total Expenses: ₹${total}`;
-    updateBalance();
+    renderData();
   }
 
-  function updateBalance() {
-    const incomeTotal = incomeData.reduce((sum, e) => sum + Number(e.amount), 0);
-    const expenseTotal = expenseData.reduce((sum, e) => sum + Number(e.amount), 0);
-    const balance = incomeTotal - expenseTotal;
-    document.getElementById("balance").textContent = `Balance: ₹${balance}`;
-  }
+  function renderData() {
+    const month = document.getElementById("filter-month").value;
+    const incBody = document.getElementById("income-body");
+    const expBody = document.getElementById("expense-body");
+    incBody.innerHTML = "";
+    expBody.innerHTML = "";
 
-  document.getElementById("income-form").addEventListener("submit", e => {
-    e.preventDefault();
-    const date = document.getElementById("income-date").value;
-    const name = document.getElementById("resident-name").value;
-    const amount = document.getElementById("income-amount").value;
-    incomeData.push({ date, name, amount });
-    localStorage.setItem("incomeData", JSON.stringify(incomeData));
-    e.target.reset();
-    renderIncome();
-  });
+    let totalIncome = 0, totalExpense = 0;
+    const filteredIncome = incomeData.filter(i => !month || i.date.startsWith(month));
+    const filteredExpense = expenseData.filter(e => !month || e.date.startsWith(month));
 
-  document.getElementById("expense-form").addEventListener("submit", e => {
-    e.preventDefault();
-    const date = document.getElementById("expense-date").value;
-    const category = document.getElementById("expense-category").value;
-    const amount = document.getElementById("expense-amount").value;
-    const description = document.getElementById("expense-desc").value;
-    expenseData.push({ date, category, amount, description });
-    localStorage.setItem("expenseData", JSON.stringify(expenseData));
-    e.target.reset();
-    renderExpenses();
-  });
-
-  function deleteIncome(index) {
-    if (confirm("Delete this income entry?")) {
-      incomeData.splice(index, 1);
-      localStorage.setItem("incomeData", JSON.stringify(incomeData));
-      renderIncome();
-    }
-  }
-
-  function deleteExpense(index) {
-    if (confirm("Delete this expense?")) {
-      expenseData.splice(index, 1);
-      localStorage.setItem("expenseData", JSON.stringify(expenseData));
-      renderExpenses();
-    }
-  }
-
-  function downloadReport() {
-    let csv = "Date,Type,Category/Name,Amount,Description\n";
-    incomeData.forEach(i => {
-      csv += `${i.date},Income,${i.name},${i.amount},\n`;
+    filteredIncome.forEach(i => {
+      incBody.innerHTML += `<tr><td>${i.date}</td><td>${i.name}</td><td>₹${i.amount}</td></tr>`;
+      totalIncome += i.amount;
     });
-    expenseData.forEach(e => {
-      csv += `${e.date},Expense,${e.category},${e.amount},${e.description}\n`;
+
+    filteredExpense.forEach(e => {
+      expBody.innerHTML += `<tr><td>${e.date}</td><td>${e.category}</td><td>₹${e.amount}</td><td>${e.desc}</td></tr>`;
+      totalExpense += e.amount;
     });
+
+    document.getElementById("total-income").textContent = totalIncome;
+    document.getElementById("total-expense").textContent = totalExpense;
+    document.getElementById("balance").textContent = totalIncome - totalExpense;
+
+    renderCategoryChart(filteredExpense);
+  }
+
+  function renderCategoryChart(expenses) {
+    const ctx = document.getElementById("categoryChart").getContext("2d");
+    if (window.catChart) window.catChart.destroy();
+    const byCat = {};
+    expenses.forEach(e => {
+      byCat[e.category] = (byCat[e.category] || 0) + e.amount;
+    });
+    window.catChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: Object.keys(byCat),
+        datasets: [{
+          data: Object.values(byCat),
+          backgroundColor: ['#3498db','#e74c3c','#f1c40f','#2ecc71','#9b59b6','#e67e22']
+        }]
+      }
+    });
+  }
+
+  function exportCSV() {
+    const rows = [
+      ["Date", "Type", "Name/Category", "Amount", "Description"],
+      ...incomeData.map(i => [i.date, "Income", i.name, i.amount, ""]),
+      ...expenseData.map(e => [e.date, "Expense", e.category, e.amount, e.desc])
+    ];
+    const csv = rows.map(r => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
+    a.href = URL.createObjectURL(blob);
     a.download = "society_report.csv";
     a.click();
   }
 
-  renderIncome();
-  renderExpenses();
+  async function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const rows = [
+      ...incomeData.map(i => [i.date, "Income", i.name, `₹${i.amount}`, ""]),
+      ...expenseData.map(e => [e.date, "Expense", e.category, `₹${e.amount}`, e.desc])
+    ];
+    doc.text("Society Maintenance Report", 14, 20);
+    doc.autoTable({
+      head: [["Date", "Type", "Name/Category", "Amount", "Description"]],
+      body: rows,
+      startY: 30
+    });
+    doc.save("society_report.pdf");
+  }
 </script>
 
 </body>
+</html>
+
   
   
   
@@ -570,5 +483,6 @@
 
 </body>
 </html>
+
 
 
